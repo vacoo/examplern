@@ -36,6 +36,10 @@ export const Exchanges = (props: StackNavigationProps<any>) => {
                 try {
                     let json = await response.json();
 
+                    if (json.error) {
+                        throw new Error(json.error);
+                    }
+
                     let rowsRaw: Row[] = [];
 
                     for (let key in json) {
