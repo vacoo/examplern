@@ -1,9 +1,14 @@
-import { Overlay } from '@components/overlay';
 import React from 'react';
 import { SafeAreaView, Text } from 'react-native';
 import { FlatList } from 'react-native-gesture-handler';
 
-interface Row {
+import { Overlay } from '@components/overlay';
+import { RowItem } from '@components/row-item';
+import { ErrorItem } from '@components/error-item';
+
+import { StackNavigationProps } from '@containers/index';
+
+export interface Row {
     name: string;
     last: string;
     highestBid: string;
@@ -17,15 +22,14 @@ export const initialRow: Row = {
     percentChange: '',
 };
 
-export const Exchanges = (props: any) => {
+export const Exchanges = (props: StackNavigationProps<any>) => {
     const [rows, setRows] = React.useState<Row[]>([]);
     const [load, setLoad] = React.useState<boolean>(false);
+    const [err, setErr] = React.useState<string>('');
 
     // Запрос на получение котировок
     const getExchanges = () => {
-        if (!rows.length) {
-            setLoad(true);
-        }
+        setLoad(true);
 
         fetch('https://poloniex.com/public?command=returnTicker', {})
             .then(async (response) => {
@@ -46,12 +50,15 @@ export const Exchanges = (props: any) => {
                     }
 
                     setRows(rowsRaw);
+                    setErr('');
                 } catch (e) {
                     console.error(e);
+                    setErr(e.message);
                 }
             })
             .catch((e) => {
                 console.error(e);
+                setErr(e.message);
             })
             .finally(() => {
                 setLoad(false);
@@ -60,8 +67,10 @@ export const Exchanges = (props: any) => {
 
     // Периодическое получение котировок
     React.useEffect(() => {
-        const ticker = setInterval(getExchanges, 5000);
         getExchanges();
+        const ticker = setInterval(() => {
+            getExchanges();
+        }, 2500);
 
         return () => {
             clearInterval(ticker);
@@ -69,15 +78,17 @@ export const Exchanges = (props: any) => {
     }, []);
 
     return (
-        <SafeAreaView>
-            <Overlay isLoading={load}>
-                <Text>{load ? 'y' : 'n'}</Text>
+        <SafeAreaView style={{ backgroundColor: '#FFF' }}>
+            <Overlay isLoading={load && !rows.length}>
                 <FlatList
                     data={rows}
+                    maxToRenderPerBatch={20}
+                    initialNumToRender={20}
+                    ListHeaderComponent={err ? <ErrorItem text={err} /> : <React.Fragment />}
                     keyExtractor={(item, index) => {
-                        return String(index);
+                        return item.name;
                     }}
-                    renderItem={({ item }) => <Text>{item.name}</Text>}
+                    renderItem={({ item }) => <RowItem row={item} />}
                 />
             </Overlay>
         </SafeAreaView>
